@@ -1,0 +1,485 @@
+/* ─── Design Tokens ───────────────────────────────────────────────────────── */
+:root {
+  --primary: #6C63FF;
+  --secondary: #FF6584;
+  --accent: #43D9AD;
+  --bg: #F0F4FF;
+  --card-bg: #FFFFFF;
+  --text: #2D2D2D;
+  --text-light: #888;
+  --danger: #FF4757;
+  --success: #2ED573;
+  --warning: #FFA502;
+  --gold: #FFD700;
+  --radius: 16px;
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.10);
+}
+
+/* ─── Reset & Base ────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding-bottom: 80px;
+  background: var(--bg);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  font-size: 16px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* ─── Layout ──────────────────────────────────────────────────────────────── */
+#app {
+  min-height: 100vh;
+}
+
+.tab-section {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* ─── Bottom Nav ──────────────────────────────────────────────────────────── */
+#bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: row;
+  background: var(--card-bg);
+  border-top: 1px solid #eee;
+  height: 64px;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+  z-index: 100;
+}
+
+.nav-btn {
+  flex: 1;
+  height: 64px;
+  font-size: 11px;
+  border: none;
+  background: none;
+  color: var(--text-light);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.2s;
+  gap: 2px;
+  padding: 0 4px;
+  line-height: 1.3;
+  min-width: 0;
+}
+
+.nav-btn:active {
+  transform: scale(0.95);
+}
+
+.nav-btn.active {
+  color: var(--primary);
+  font-weight: bold;
+}
+
+/* ─── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 16px;
+}
+
+/* ─── Hero ────────────────────────────────────────────────────────────────── */
+.hero-avatar {
+  font-size: 72px;
+  text-align: center;
+  display: block;
+  margin: 8px auto;
+  line-height: 1.1;
+}
+
+.hero-name-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 4px 0;
+}
+
+.hero-name {
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.level-badge {
+  background: var(--primary);
+  color: white;
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 14px;
+  display: inline-block;
+}
+
+.points-bar-wrap {
+  background: #eee;
+  border-radius: 8px;
+  height: 14px;
+  margin: 8px 0;
+  overflow: hidden;
+}
+
+.points-bar-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+  min-width: 4px;
+}
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px 0;
+  font-size: 16px;
+}
+
+/* ─── Avatar Picker ───────────────────────────────────────────────────────── */
+.avatar-picker {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.avatar-option {
+  font-size: 40px;
+  background: none;
+  border: 3px solid transparent;
+  border-radius: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.avatar-option:active {
+  transform: scale(0.92);
+}
+
+.avatar-option.selected {
+  border-color: var(--primary);
+  background: var(--bg);
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 12px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: transform 0.1s, opacity 0.2s;
+  min-height: 48px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: white;
+}
+
+.btn-success {
+  background: var(--success);
+  color: white;
+}
+
+.btn-danger {
+  background: var(--danger);
+  color: white;
+}
+
+.btn-warning {
+  background: var(--warning);
+  color: white;
+}
+
+.btn-block {
+  width: 100%;
+  display: block;
+  margin-top: 12px;
+}
+
+.btn-icon {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  min-width: 36px;
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.btn-icon:hover {
+  background: var(--bg);
+}
+
+.btn-icon:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* ─── Exercise Cards (Today) ──────────────────────────────────────────────── */
+.exercise-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  cursor: default;
+}
+
+.exercise-card.done .exercise-name {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+.exercise-card.done {
+  opacity: 0.7;
+}
+
+.exercise-checkbox {
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ─── Complete Button ─────────────────────────────────────────────────────── */
+.complete-btn {
+  font-size: 20px;
+  padding: 18px;
+  border-radius: var(--radius);
+  width: 100%;
+  display: block;
+  margin-top: 12px;
+}
+
+.complete-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+/* ─── Congrats Banner ─────────────────────────────────────────────────────── */
+.congrats-banner {
+  background: linear-gradient(135deg, var(--accent), var(--primary));
+  color: white;
+  text-align: center;
+  font-size: 18px;
+  padding: 24px;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 12px;
+  line-height: 1.6;
+}
+
+/* ─── Program Tab ─────────────────────────────────────────────────────────── */
+.program-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.program-name-display {
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.exercise-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.exercise-item:last-child {
+  border-bottom: none;
+}
+
+.exercise-list {
+  margin-top: 12px;
+}
+
+/* ─── History Table ───────────────────────────────────────────────────────── */
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.history-table th {
+  background: var(--primary);
+  color: white;
+  padding: 10px 8px;
+  text-align: left;
+  font-weight: bold;
+}
+
+.history-table th:first-child {
+  border-radius: 8px 0 0 0;
+}
+
+.history-table th:last-child {
+  border-radius: 0 8px 0 0;
+}
+
+.history-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.history-table tr:nth-child(even) td {
+  background: #f9f9ff;
+}
+
+/* ─── Toast ───────────────────────────────────────────────────────────────── */
+.toast {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #333;
+  color: white;
+  padding: 14px 24px;
+  border-radius: 12px;
+  font-size: 16px;
+  z-index: 1000;
+  text-align: center;
+  transition: opacity 0.3s;
+  max-width: 90vw;
+  pointer-events: none;
+  opacity: 1;
+}
+
+.toast.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ─── Form Inputs ─────────────────────────────────────────────────────────── */
+input[type="text"],
+input[type="number"],
+select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  font-size: 16px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+  background: var(--card-bg);
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
+  outline: 2px solid var(--primary);
+  border-color: var(--primary);
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.form-row .btn {
+  flex-shrink: 0;
+}
+
+.form-row select,
+.form-row input[type="number"] {
+  flex: 1;
+}
+
+/* ─── Active toggle checkbox ──────────────────────────────────────────────── */
+.ex-active-toggle {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--primary);
+  flex-shrink: 0;
+}
+
+/* ─── Responsive ──────────────────────────────────────────────────────────── */
+@media (min-width: 480px) {
+  .tab-section {
+    padding: 24px 16px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+
+  #bottom-nav {
+    max-width: 480px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: var(--radius) var(--radius) 0 0;
+    border: 1px solid #eee;
+    border-bottom: none;
+  }
+}
+
+/* ─── Headings ────────────────────────────────────────────────────────────── */
+h2 {
+  font-size: 22px;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+/* ─── Scrollbar (WebKit) ──────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 3px;
+}
