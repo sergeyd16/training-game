@@ -1,7 +1,7 @@
 import { openDB, getAllRecords, clearStore, putRecord } from './storage.js';
 import { initHero, getHero, updateHero } from './hero.js';
-import { getPrograms, getProgram, saveProgram, deleteProgram, createProgram, createExercise } from './programs.js';
-import { todayStr, getTodayLog, buildTodayLog, markExerciseDone, completeDay, getDayLogs, canCompleteToday } from './daily-log.js';
+import { getPrograms, getProgram, saveProgram, deleteProgram, createProgram, createExercise, getActiveProgram, setActiveProgram } from './programs.js';
+import { todayStr, getTodayLog, buildTodayLog, rebuildTodayLog, markExerciseDone, completeDay, uncompleteDay, getDayLogs, canCompleteToday } from './daily-log.js';
 import { convertPoints, getRewardHistory } from './rewards.js';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -121,7 +121,6 @@ async function renderHero() {
 // ─── Today Tab ────────────────────────────────────────────────────────────────
 async function renderToday() {
   const section = document.getElementById('tab-today');
-  const programs = await getPrograms();
 
   const dateLabel = new Date().toLocaleDateString('en-US', {
     weekday: 'long', month: 'long', day: 'numeric',
@@ -129,51 +128,73 @@ async function renderToday() {
 
   section.innerHTML = `<h2 style="text-align:center;margin:0 0 16px;">${dateLabel}</h2>`;
 
-  if (programs.length === 0) {
-    section.innerHTML += `
+  const activeProgram = await getActiveProgram();
+
+  if (!activeProgram) {
+    section.insertAdjacentHTML('beforeend', `
       <div class="card" style="text-align:center;">
         <p style="font-size:18px;">📋 Create a program first!</p>
         <button class="btn btn-primary btn-block" id="go-program-btn">Go to Program</button>
-      </div>`;
+      </div>`);
     document.getElementById('go-program-btn').addEventListener('click', () => switchTab('program'));
     return;
   }
 
+  section.insertAdjacentHTML('beforeend', `
+    <div style="text-align:center;margin-bottom:12px;font-size:13px;color:var(--text-light);">
+      📋 Program: <strong>${escHtml(activeProgram.name)}</strong>
+    </div>`);
+
   let log = await getTodayLog();
   if (!log) {
-    log = await buildTodayLog(programs[0].id);
+    log = await buildTodayLog(activeProgram.id);
   }
 
   if (!log || log.exercises.length === 0) {
-    section.innerHTML += `<div class="card"><p>No active exercises in your program. Add some in the Program tab!</p></div>`;
+    section.insertAdjacentHTML('beforeend', `<div class="card"><p>No active exercises in your program. Add some in the Program tab!</p></div>`);
     return;
   }
 
-  const allDone = log.exercises.every((e) => e.done);
   const exercisesHtml = log.exercises.map((ex) => `
     <div class="exercise-card card ${ex.done ? 'done' : ''}" data-id="${ex.id}">
       <div style="flex:1;">
         <div class="exercise-name" style="font-size:18px;font-weight:bold;">${escHtml(ex.name)}</div>
         <div style="color:var(--text-light);font-size:14px;">${ex.target} ${ex.type === 'seconds' ? 'sec' : 'reps'}</div>
       </div>
-      <input type="checkbox" class="exercise-checkbox" data-exercise-id="${ex.id}" ${ex.done ? 'checked' : ''}>
+      <input type="checkbox" class="exercise-checkbox" data-exercise-id="${ex.id}" ${ex.done ? 'checked' : ''} ${log.completed ? 'disabled' : ''}>
     </div>
   `).join('');
 
-  section.innerHTML += exercisesHtml;
+  section.insertAdjacentHTML('beforeend', exercisesHtml);
 
   if (log.completed) {
-    section.innerHTML += `
+    section.insertAdjacentHTML('beforeend', `
       <div class="congrats-banner">
         🎉 Great job today!<br>
         <strong>+${log.pointsEarned} points</strong> earned<br>
         🔥 Streak: ${log.streakOnDay} days
-      </div>`;
+      </div>
+      <button class="btn btn-block" id="undo-btn" style="background:#eee;color:var(--text);margin-top:8px;">
+        ↩️ Undo — I pressed by mistake
+      </button>`);
+
+    document.getElementById('undo-btn').addEventListener('click', async () => {
+      if (!confirm('Are you sure? This will cancel today\'s completion and remove the points.')) return;
+      try {
+        await uncompleteDay();
+        showToast('↩️ Workout completion cancelled');
+        await renderToday();
+        await renderHero();
+      } catch (e) {
+        showToast('⚠️ ' + e.message);
+      }
+    });
   } else {
-    section.innerHTML += `
-      <button class="btn btn-success btn-block complete-btn" id="complete-btn" ${allDone ? '' : ''}>
+    section.insertAdjacentHTML('beforeend', `
+      <button class="btn btn-success btn-block complete-btn" id="complete-btn">
         ✅ Complete Workout!
-      </button>`;
+      </button>`);
+
     document.getElementById('complete-btn').addEventListener('click', async () => {
       const can = await canCompleteToday();
       if (!can) { showToast('Already completed or no exercises!'); return; }
@@ -186,13 +207,15 @@ async function renderToday() {
     });
   }
 
-  // Checkbox handlers
-  section.querySelectorAll('.exercise-checkbox').forEach((cb) => {
-    cb.addEventListener('change', async () => {
-      await markExerciseDone(log.date, cb.dataset.exerciseId, cb.checked);
-      await renderToday();
+  // Checkbox handlers (only if not completed)
+  if (!log.completed) {
+    section.querySelectorAll('.exercise-checkbox').forEach((cb) => {
+      cb.addEventListener('change', async () => {
+        await markExerciseDone(log.date, cb.dataset.exerciseId, cb.checked);
+        await renderToday();
+      });
     });
-  });
+  }
 }
 
 // ─── Program Tab ──────────────────────────────────────────────────────────────
@@ -229,7 +252,9 @@ async function renderProgram() {
   document.getElementById('save-new-prog-btn').addEventListener('click', async () => {
     const name = document.getElementById('new-prog-name').value.trim();
     if (!name) { showToast('Enter a program name'); return; }
-    const prog = createProgram({ name });
+    const programs = await getPrograms();
+    // First program is auto-set as active
+    const prog = createProgram({ name, active: programs.length === 0 });
     await saveProgram(prog);
     showToast('✅ Program created!');
     await renderProgram();
@@ -246,13 +271,16 @@ async function renderProgram() {
     progDiv.dataset.progId = prog.id;
 
     const activeExCount = (prog.exercises || []).filter((e) => e.active).length;
+    const isActive = !!prog.active;
     progDiv.innerHTML = `
       <div class="program-header" data-prog-id="${prog.id}">
         <div>
           <span class="program-name-display" id="pname-${prog.id}">${escHtml(prog.name)}</span>
-          <span style="font-size:12px;color:var(--text-light);margin-left:8px;">(${activeExCount} active)</span>
+          ${isActive ? '<span class="active-badge">▶ Active</span>' : ''}
+          <span style="font-size:12px;color:var(--text-light);margin-left:8px;">(${activeExCount} active exercises)</span>
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
+          ${!isActive ? `<button class="btn-icon set-active-btn" data-prog-id="${prog.id}" title="Set as today's program">▶️</button>` : ''}
           <button class="btn-icon edit-prog-btn" data-prog-id="${prog.id}" title="Rename">✏️</button>
           <button class="btn-icon delete-prog-btn" data-prog-id="${prog.id}" title="Delete" style="color:var(--danger);">🗑️</button>
           <span class="toggle-arrow" id="arrow-${prog.id}">▼</span>
@@ -327,6 +355,19 @@ async function renderProgram() {
       await renderProgram();
     });
 
+    // Set as active program
+    const setActiveBtn = progDiv.querySelector('.set-active-btn');
+    if (setActiveBtn) {
+      setActiveBtn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await setActiveProgram(prog.id);
+        // Rebuild today's log with new active program (if not completed)
+        await rebuildTodayLog(prog.id);
+        showToast(`▶ "${escHtml(prog.name)}" is now the active program`);
+        await renderProgram();
+      });
+    }
+
     // Show add exercise form
     document.getElementById(`show-add-ex-${prog.id}`).addEventListener('click', () => {
       document.getElementById(`add-ex-form-${prog.id}`).classList.remove('hidden');
@@ -376,12 +417,17 @@ function renderExerciseList(prog) {
     </div>
   `).join('');
 
-  // Active toggle
+  // Active toggle — also rebuilds today's log if this is the active program
   container.querySelectorAll('.ex-active-toggle').forEach((cb) => {
     cb.addEventListener('change', async () => {
       const ex = prog.exercises.find((e) => e.id === cb.dataset.exId);
       if (ex) ex.active = cb.checked;
       await saveProgram(prog);
+      // Rebuild today's log if this program is active
+      const activeProgram = await getActiveProgram();
+      if (activeProgram && activeProgram.id === prog.id) {
+        await rebuildTodayLog(prog.id);
+      }
       renderExerciseList(prog);
     });
   });

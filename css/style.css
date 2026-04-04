@@ -129,6 +129,17 @@ body {
   display: inline-block;
 }
 
+.active-badge {
+  background: var(--success);
+  color: white;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-left: 6px;
+  display: inline-block;
+}
+
 .points-bar-wrap {
   background: #eee;
   border-radius: 8px;

@@ -16,6 +16,20 @@ export async function deleteProgram(id) {
   return deleteRecord('programs', id);
 }
 
+export async function getActiveProgram() {
+  const programs = await getAllRecords('programs');
+  if (programs.length === 0) return null;
+  return programs.find((p) => p.active) || programs[0];
+}
+
+export async function setActiveProgram(id) {
+  const programs = await getAllRecords('programs');
+  for (const p of programs) {
+    p.active = (p.id === id);
+    await putRecord('programs', p);
+  }
+}
+
 export function createExercise(fields) {
   return {
     id: crypto.randomUUID(),
@@ -31,6 +45,7 @@ export function createProgram(fields) {
   return {
     id: crypto.randomUUID(),
     name: fields.name ?? 'New Program',
+    active: fields.active !== undefined ? fields.active : false,
     exercises: [],
   };
 }
