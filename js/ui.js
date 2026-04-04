@@ -236,7 +236,7 @@ async function renderProgram() {
   });
 
   if (programs.length === 0) {
-    section.innerHTML += `<div class="card" style="text-align:center;color:var(--text-light);">No programs yet. Create one above!</div>`;
+    section.insertAdjacentHTML('beforeend', `<div class="card" style="text-align:center;color:var(--text-light);">No programs yet. Create one above!</div>`);
     return;
   }
 
