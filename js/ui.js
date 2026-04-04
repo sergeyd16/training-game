@@ -410,7 +410,12 @@ function renderExerciseList(prog) {
     <div class="exercise-item" data-ex-id="${ex.id}">
       <input type="checkbox" class="ex-active-toggle" data-prog-id="${prog.id}" data-ex-id="${ex.id}" ${ex.active ? 'checked' : ''} title="Active">
       <span style="flex:1;font-size:15px;${ex.active ? '' : 'opacity:0.5;text-decoration:line-through;'}">${escHtml(ex.name)}</span>
-      <span style="font-size:13px;color:var(--text-light);min-width:60px;">${ex.target} ${ex.type === 'seconds' ? 'sec' : 'reps'}</span>
+      <span class="ex-target-display" data-ex-id="${ex.id}" style="font-size:13px;color:var(--text-light);min-width:60px;cursor:pointer;" title="Tap to edit">${ex.target} ${ex.type === 'seconds' ? 'sec' : 'reps'} ✏️</span>
+      <span class="ex-target-edit hidden" data-ex-id="${ex.id}" style="display:none;align-items:center;gap:4px;">
+        <input type="number" class="ex-target-input" data-ex-id="${ex.id}" value="${ex.target}" min="1" style="width:60px;padding:4px 6px;font-size:14px;margin:0;">
+        <button class="btn-icon ex-target-save" data-ex-id="${ex.id}" title="Save">✅</button>
+        <button class="btn-icon ex-target-cancel" data-ex-id="${ex.id}" title="Cancel">❌</button>
+      </span>
       <button class="btn-icon move-up-btn" data-prog-id="${prog.id}" data-ex-id="${ex.id}" ${idx === 0 ? 'disabled' : ''} title="Move up">⬆️</button>
       <button class="btn-icon move-down-btn" data-prog-id="${prog.id}" data-ex-id="${ex.id}" ${idx === exercises.length - 1 ? 'disabled' : ''} title="Move down">⬇️</button>
       <button class="btn-icon del-ex-btn" data-prog-id="${prog.id}" data-ex-id="${ex.id}" title="Delete" style="color:var(--danger);">🗑️</button>
@@ -463,6 +468,46 @@ function renderExerciseList(prog) {
     btn.addEventListener('click', async () => {
       prog.exercises = prog.exercises.filter((e) => e.id !== btn.dataset.exId);
       await saveProgram(prog);
+      renderExerciseList(prog);
+    });
+  });
+
+  // Edit target (reps/secs) inline
+  container.querySelectorAll('.ex-target-display').forEach((span) => {
+    span.addEventListener('click', () => {
+      const id = span.dataset.exId;
+      span.style.display = 'none';
+      const editSpan = container.querySelector(`.ex-target-edit[data-ex-id="${id}"]`);
+      editSpan.style.display = 'flex';
+      editSpan.classList.remove('hidden');
+      editSpan.querySelector('.ex-target-input').focus();
+    });
+  });
+
+  container.querySelectorAll('.ex-target-cancel').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.exId;
+      container.querySelector(`.ex-target-display[data-ex-id="${id}"]`).style.display = '';
+      const editSpan = container.querySelector(`.ex-target-edit[data-ex-id="${id}"]`);
+      editSpan.style.display = 'none';
+    });
+  });
+
+  container.querySelectorAll('.ex-target-save').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.exId;
+      const input = container.querySelector(`.ex-target-input[data-ex-id="${id}"]`);
+      const newTarget = parseInt(input.value, 10);
+      if (!newTarget || newTarget < 1) { showToast('Enter a valid number'); return; }
+      const ex = prog.exercises.find((e) => e.id === id);
+      if (ex) ex.target = newTarget;
+      await saveProgram(prog);
+      // Rebuild today's log if this is the active program
+      const activeProgram = await getActiveProgram();
+      if (activeProgram && activeProgram.id === prog.id) {
+        await rebuildTodayLog(prog.id);
+      }
+      showToast('✅ Updated!');
       renderExerciseList(prog);
     });
   });
