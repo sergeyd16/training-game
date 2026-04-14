@@ -400,6 +400,15 @@ body {
   transform: scale(0.9);
 }
 
+.history-row-missing td {
+  color: var(--text-light);
+  font-style: italic;
+}
+
+.status-toggle-btn.missing {
+  font-style: normal;
+}
+
 /* ─── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed;

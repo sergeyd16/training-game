@@ -199,6 +199,56 @@ export async function getDayLogs() {
   return logs.sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
+export async function createAndCompletePastDay(date) {
+  if (date === todayStr()) throw new Error('Use completeDay() for today');
+  const existing = await getRecord('dayLogs', date);
+  if (existing) throw new Error('A log already exists for this date');
+
+  const hero = await getHero();
+
+  const previousHeroState = {
+    currentPoints: hero.currentPoints || 0,
+    lifetimePoints: hero.lifetimePoints || 0,
+    streak: hero.streak || 0,
+    lastCompletedDate: hero.lastCompletedDate || null,
+    level: hero.level || 1,
+  };
+
+  const newCurrentPoints = (hero.currentPoints || 0) + 1;
+  const newLifetimePoints = (hero.lifetimePoints || 0) + 1;
+  const newLevel = calcLevel(newLifetimePoints);
+
+  // Determine streakOnDay based on the previous day
+  const prevCursor = new Date(date + 'T00:00:00');
+  prevCursor.setDate(prevCursor.getDate() - 1);
+  const py = prevCursor.getFullYear();
+  const pm = String(prevCursor.getMonth() + 1).padStart(2, '0');
+  const pd = String(prevCursor.getDate()).padStart(2, '0');
+  const prevDayLog = await getRecord('dayLogs', `${py}-${pm}-${pd}`);
+  const streakOnDay = prevDayLog?.completed ? (prevDayLog.streakOnDay || 0) + 1 : 1;
+
+  const log = {
+    date,
+    programId: null,
+    completed: true,
+    exercises: [],
+    pointsEarned: 1,
+    streakOnDay,
+    retroCompleted: true,
+    previousHeroState,
+  };
+  await putRecord('dayLogs', log);
+
+  const { streak: newStreak, lastCompletedDate } = await recalculateHeroStreak();
+  await updateHero({
+    currentPoints: newCurrentPoints,
+    lifetimePoints: newLifetimePoints,
+    streak: newStreak,
+    lastCompletedDate,
+    level: newLevel,
+  });
+}
+
 export async function completePastDay(date) {
   if (date === todayStr()) throw new Error('Use completeDay() for today');
   const log = await getRecord('dayLogs', date);

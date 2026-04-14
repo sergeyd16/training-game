@@ -1,7 +1,7 @@
 import { openDB, getAllRecords, clearStore, putRecord } from './storage.js';
 import { initHero, getHero, updateHero } from './hero.js';
 import { getPrograms, getProgram, saveProgram, deleteProgram, createProgram, createExercise, getActiveProgram, setActiveProgram } from './programs.js';
-import { todayStr, getTodayLog, buildTodayLog, rebuildTodayLog, markExerciseDone, completeDay, uncompleteDay, completePastDay, uncompletePastDay, getDayLogs, canCompleteToday } from './daily-log.js';
+import { todayStr, getTodayLog, buildTodayLog, rebuildTodayLog, markExerciseDone, completeDay, uncompleteDay, completePastDay, uncompletePastDay, createAndCompletePastDay, getDayLogs, canCompleteToday } from './daily-log.js';
 import { convertPoints, getRewardHistory } from './rewards.js';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -521,25 +521,55 @@ async function renderHistory() {
 
   section.innerHTML = `<h2 style="margin:0 0 16px;">📅 Workout History</h2>`;
 
-  if (logs.length === 0) {
-    section.innerHTML += `<div class="card" style="text-align:center;color:var(--text-light);">No workouts yet. Start today!</div>`;
-    return;
+  // Build a map of existing logs keyed by date
+  const logMap = Object.fromEntries(logs.map((l) => [l.date, l]));
+
+  // Determine date range: from earliest log (or today if no logs) to today
+  const allDates = logs.map((l) => l.date).sort();
+  const startDate = allDates.length > 0 ? allDates[0] : today;
+
+  // Generate every date from startDate to today
+  const dateRange = [];
+  const cursor = new Date(startDate + 'T00:00:00');
+  const todayDate = new Date(today + 'T00:00:00');
+  while (cursor <= todayDate) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    const d = String(cursor.getDate()).padStart(2, '0');
+    dateRange.push(`${y}-${m}-${d}`);
+    cursor.setDate(cursor.getDate() + 1);
   }
 
-  const rows = logs.map((log) => {
-    const dateObj = new Date(log.date + 'T00:00:00');
+  // Render newest first
+  const rows = dateRange.reverse().map((date) => {
+    const dateObj = new Date(date + 'T00:00:00');
     const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
+    const isToday = date === today;
+    const log = logMap[date];
+
+    if (!log) {
+      // Missing day — offer to add it
+      return `<tr class="history-row-missing">
+        <td>${dateLabel}</td>
+        <td style="text-align:center;">
+          <button class="status-toggle-btn missing" data-date="${date}" title="Add this day as completed">➕</button>
+        </td>
+        <td style="text-align:center;color:var(--text-light);">—</td>
+        <td style="text-align:center;color:var(--text-light);">—</td>
+        <td style="text-align:center;color:var(--text-light);">—</td>
+      </tr>`;
+    }
+
     const doneCount = (log.exercises || []).filter((e) => e.done).length;
     const totalCount = (log.exercises || []).length;
-    const isToday = log.date === today;
 
     let statusCell;
     if (isToday) {
       statusCell = log.completed ? '✅' : '❌';
     } else if (log.completed) {
-      statusCell = `<button class="status-toggle-btn complete" data-date="${log.date}" title="Tap to undo completion">✅</button>`;
+      statusCell = `<button class="status-toggle-btn complete" data-date="${date}" title="Tap to undo completion">✅</button>`;
     } else {
-      statusCell = `<button class="status-toggle-btn incomplete" data-date="${log.date}" title="Tap to mark as completed">❌</button>`;
+      statusCell = `<button class="status-toggle-btn incomplete" data-date="${date}" title="Tap to mark as completed">❌</button>`;
     }
 
     return `<tr>
@@ -551,7 +581,7 @@ async function renderHistory() {
     </tr>`;
   }).join('');
 
-  section.innerHTML += `
+  const tableHtml = dateRange.length > 0 ? `
     <div style="overflow-x:auto;">
       <table class="history-table">
         <thead>
@@ -565,7 +595,23 @@ async function renderHistory() {
         </thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div>` : `<div class="card" style="text-align:center;color:var(--text-light);">No workouts yet. Start today!</div>`;
+
+  section.innerHTML += tableHtml;
+
+  section.querySelectorAll('.status-toggle-btn.missing').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Mark this day as completed? (+1 point, streak recalculated)')) return;
+      try {
+        await createAndCompletePastDay(btn.dataset.date);
+        showToast('✅ Day added and marked as completed! +1 point');
+        await renderHistory();
+        await renderHero();
+      } catch (e) {
+        showToast('⚠️ ' + e.message);
+      }
+    });
+  });
 
   section.querySelectorAll('.status-toggle-btn.incomplete').forEach((btn) => {
     btn.addEventListener('click', async () => {
