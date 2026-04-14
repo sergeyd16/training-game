@@ -381,6 +381,25 @@ body {
   background: #f9f9ff;
 }
 
+.status-toggle-btn {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-size: 16px;
+  border-radius: 6px;
+  transition: background 0.15s, transform 0.1s;
+  line-height: 1;
+}
+
+.status-toggle-btn:hover {
+  background: rgba(108, 99, 255, 0.1);
+}
+
+.status-toggle-btn:active {
+  transform: scale(0.9);
+}
+
 /* ─── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed;

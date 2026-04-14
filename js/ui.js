@@ -1,7 +1,7 @@
 import { openDB, getAllRecords, clearStore, putRecord } from './storage.js';
 import { initHero, getHero, updateHero } from './hero.js';
 import { getPrograms, getProgram, saveProgram, deleteProgram, createProgram, createExercise, getActiveProgram, setActiveProgram } from './programs.js';
-import { todayStr, getTodayLog, buildTodayLog, rebuildTodayLog, markExerciseDone, completeDay, uncompleteDay, getDayLogs, canCompleteToday } from './daily-log.js';
+import { todayStr, getTodayLog, buildTodayLog, rebuildTodayLog, markExerciseDone, completeDay, uncompleteDay, completePastDay, uncompletePastDay, getDayLogs, canCompleteToday } from './daily-log.js';
 import { convertPoints, getRewardHistory } from './rewards.js';
 
 // ─── Toast ────────────────────────────────────────────────────────────────────
@@ -517,6 +517,7 @@ function renderExerciseList(prog) {
 async function renderHistory() {
   const section = document.getElementById('tab-history');
   const logs = await getDayLogs();
+  const today = todayStr();
 
   section.innerHTML = `<h2 style="margin:0 0 16px;">📅 Workout History</h2>`;
 
@@ -530,9 +531,20 @@ async function renderHistory() {
     const dateLabel = dateObj.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit' });
     const doneCount = (log.exercises || []).filter((e) => e.done).length;
     const totalCount = (log.exercises || []).length;
+    const isToday = log.date === today;
+
+    let statusCell;
+    if (isToday) {
+      statusCell = log.completed ? '✅' : '❌';
+    } else if (log.completed) {
+      statusCell = `<button class="status-toggle-btn complete" data-date="${log.date}" title="Tap to undo completion">✅</button>`;
+    } else {
+      statusCell = `<button class="status-toggle-btn incomplete" data-date="${log.date}" title="Tap to mark as completed">❌</button>`;
+    }
+
     return `<tr>
       <td>${dateLabel}</td>
-      <td style="text-align:center;">${log.completed ? '✅' : '❌'}</td>
+      <td style="text-align:center;">${statusCell}</td>
       <td style="text-align:center;">${doneCount}/${totalCount}</td>
       <td style="text-align:center;">${log.pointsEarned ?? 0}</td>
       <td style="text-align:center;">${log.streakOnDay ?? 0} 🔥</td>
@@ -554,6 +566,34 @@ async function renderHistory() {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
+
+  section.querySelectorAll('.status-toggle-btn.incomplete').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Mark this day as completed? (+1 point, streak recalculated)')) return;
+      try {
+        await completePastDay(btn.dataset.date);
+        showToast('✅ Day marked as completed! +1 point');
+        await renderHistory();
+        await renderHero();
+      } catch (e) {
+        showToast('⚠️ ' + e.message);
+      }
+    });
+  });
+
+  section.querySelectorAll('.status-toggle-btn.complete').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('Undo completion for this day? (points will be removed)')) return;
+      try {
+        await uncompletePastDay(btn.dataset.date);
+        showToast('↩️ Day completion undone');
+        await renderHistory();
+        await renderHero();
+      } catch (e) {
+        showToast('⚠️ ' + e.message);
+      }
+    });
+  });
 }
 
 // ─── Backup Tab ───────────────────────────────────────────────────────────────

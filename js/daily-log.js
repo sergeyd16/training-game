@@ -2,6 +2,33 @@ import { getRecord, putRecord, getAllRecords } from './storage.js';
 import { getHero, updateHero, calcLevel } from './hero.js';
 import { getProgram } from './programs.js';
 
+async function recalculateHeroStreak() {
+  const logs = await getAllRecords('dayLogs');
+  const completedDates = new Set(logs.filter((l) => l.completed).map((l) => l.date));
+
+  if (completedDates.size === 0) {
+    return { streak: 0, lastCompletedDate: null };
+  }
+
+  const lastCompletedDate = Array.from(completedDates).sort().at(-1);
+
+  let streak = 0;
+  const cursor = new Date(lastCompletedDate + 'T00:00:00');
+  while (true) {
+    const y = cursor.getFullYear();
+    const m = String(cursor.getMonth() + 1).padStart(2, '0');
+    const d = String(cursor.getDate()).padStart(2, '0');
+    if (completedDates.has(`${y}-${m}-${d}`)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+
+  return { streak, lastCompletedDate };
+}
+
 export function todayStr() {
   const now = new Date();
   const y = now.getFullYear();
@@ -170,6 +197,82 @@ export async function rebuildTodayLog(programId) {
 export async function getDayLogs() {
   const logs = await getAllRecords('dayLogs');
   return logs.sort((a, b) => (a.date < b.date ? 1 : -1));
+}
+
+export async function completePastDay(date) {
+  if (date === todayStr()) throw new Error('Use completeDay() for today');
+  const log = await getRecord('dayLogs', date);
+  if (!log) throw new Error('No log found for ' + date);
+  if (log.completed) throw new Error('Day is already completed');
+
+  const hero = await getHero();
+
+  const previousHeroState = {
+    currentPoints: hero.currentPoints || 0,
+    lifetimePoints: hero.lifetimePoints || 0,
+    streak: hero.streak || 0,
+    lastCompletedDate: hero.lastCompletedDate || null,
+    level: hero.level || 1,
+  };
+
+  const newCurrentPoints = (hero.currentPoints || 0) + 1;
+  const newLifetimePoints = (hero.lifetimePoints || 0) + 1;
+  const newLevel = calcLevel(newLifetimePoints);
+
+  log.completed = true;
+  log.pointsEarned = 1;
+  log.retroCompleted = true;
+  log.previousHeroState = previousHeroState;
+  await putRecord('dayLogs', log);
+
+  const { streak: newStreak, lastCompletedDate } = await recalculateHeroStreak();
+
+  // Update streakOnDay for this log based on recalculated streak
+  const prevDayCursor = new Date(date + 'T00:00:00');
+  prevDayCursor.setDate(prevDayCursor.getDate() - 1);
+  const py = prevDayCursor.getFullYear();
+  const pm = String(prevDayCursor.getMonth() + 1).padStart(2, '0');
+  const pd = String(prevDayCursor.getDate()).padStart(2, '0');
+  const prevDayLog = await getRecord('dayLogs', `${py}-${pm}-${pd}`);
+  log.streakOnDay = prevDayLog?.completed ? (prevDayLog.streakOnDay || 0) + 1 : 1;
+  await putRecord('dayLogs', log);
+
+  await updateHero({
+    currentPoints: newCurrentPoints,
+    lifetimePoints: newLifetimePoints,
+    streak: newStreak,
+    lastCompletedDate,
+    level: newLevel,
+  });
+}
+
+export async function uncompletePastDay(date) {
+  if (date === todayStr()) throw new Error('Use uncompleteDay() for today');
+  const log = await getRecord('dayLogs', date);
+  if (!log || !log.completed) throw new Error('Day is not completed');
+
+  const hero = await getHero();
+  const pointsToRemove = log.pointsEarned || 0;
+
+  log.completed = false;
+  log.pointsEarned = 0;
+  log.streakOnDay = 0;
+  delete log.retroCompleted;
+  delete log.previousHeroState;
+  await putRecord('dayLogs', log);
+
+  const newCurrentPoints = Math.max(0, (hero.currentPoints || 0) - pointsToRemove);
+  const newLifetimePoints = Math.max(0, (hero.lifetimePoints || 0) - pointsToRemove);
+  const newLevel = calcLevel(newLifetimePoints);
+  const { streak: newStreak, lastCompletedDate } = await recalculateHeroStreak();
+
+  await updateHero({
+    currentPoints: newCurrentPoints,
+    lifetimePoints: newLifetimePoints,
+    streak: newStreak,
+    lastCompletedDate,
+    level: newLevel,
+  });
 }
 
 export async function canCompleteToday() {
