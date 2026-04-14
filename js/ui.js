@@ -601,10 +601,12 @@ async function renderHistory() {
 
   section.querySelectorAll('.status-toggle-btn.missing').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Mark this day as completed? (+1 point, streak recalculated)')) return;
+      if (!confirm('Mark this day as completed? (points + streak recalculated)')) return;
       try {
-        await createAndCompletePastDay(btn.dataset.date);
-        showToast('✅ Day added and marked as completed! +1 point');
+        const { pointsEarned, streakOnDay } = await createAndCompletePastDay(btn.dataset.date);
+        let msg = `✅ Day added! +${pointsEarned} point${pointsEarned > 1 ? 's' : ''} 🔥 Streak: ${streakOnDay}`;
+        if (pointsEarned > 1) msg += ' BONUS! 🌟';
+        showToast(msg, 4000);
         await renderHistory();
         await renderHero();
       } catch (e) {
@@ -615,10 +617,12 @@ async function renderHistory() {
 
   section.querySelectorAll('.status-toggle-btn.incomplete').forEach((btn) => {
     btn.addEventListener('click', async () => {
-      if (!confirm('Mark this day as completed? (+1 point, streak recalculated)')) return;
+      if (!confirm('Mark this day as completed? (points + streak recalculated)')) return;
       try {
-        await completePastDay(btn.dataset.date);
-        showToast('✅ Day marked as completed! +1 point');
+        const { pointsEarned, streakOnDay } = await completePastDay(btn.dataset.date);
+        let msg = `✅ Day completed! +${pointsEarned} point${pointsEarned > 1 ? 's' : ''} 🔥 Streak: ${streakOnDay}`;
+        if (pointsEarned > 1) msg += ' BONUS! 🌟';
+        showToast(msg, 4000);
         await renderHistory();
         await renderHero();
       } catch (e) {
