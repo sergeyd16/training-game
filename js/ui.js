@@ -197,7 +197,7 @@ async function renderToday() {
 
     document.getElementById('complete-btn').addEventListener('click', async () => {
       const can = await canCompleteToday();
-      if (!can) { showToast('Already completed or no exercises!'); return; }
+      if (!can) { showToast('Complete all exercises before finishing your workout!'); return; }
       const result = await completeDay();
       let msg = `🎉 +${result.pointsEarned} points! Streak: ${result.newStreak} days! 🔥`;
       if (result.bonusEarned) msg += ' BONUS +5! 🌟';

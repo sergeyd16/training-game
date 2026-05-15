@@ -296,5 +296,5 @@ export async function canCompleteToday() {
   if (!log) return false;
   if (log.completed) return false;
   if (!log.exercises || log.exercises.length === 0) return false;
-  return true;
+  return log.exercises.every((e) => e.done);
 }
